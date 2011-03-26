@@ -25,7 +25,11 @@
 %%
 
 statement:
-         statement expr '\n'        { print_tree($2); printf("\n"); }
+         statement expr '\n'        {
+                                        print_tree($2);
+                                        printf("\n");
+                                        free_tree($2);
+                                    }
          |
          ;
 
