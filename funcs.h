@@ -32,4 +32,5 @@ struct ast* newast(char op, struct ast* l, struct ast* r);
 struct ast* newnum(long d);
 struct ast* newvar(char c);
 
+void print_tree(struct ast* t);
 void free_tree(struct ast* t);

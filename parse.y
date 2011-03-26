@@ -7,12 +7,14 @@
 
 %union
 {
-    char    varval;
-    int     intval;
+    struct ast  *t;
+    char        varval;
+    int         intval;
 }
 
 %type <varval> VAR;
-%type <intval> expr NUM;
+%type <intval> NUM;
+%type <t> expr
 
 %token VAR NUM;
 
@@ -23,17 +25,18 @@
 %%
 
 statement:
-         statement expr '\n'        { printf("%d\n", $2); }
+         statement expr '\n'        { print_tree($2); printf("\n"); }
          |
          ;
 
 expr:
-         NUM                        { $$ = $1; }
-         | expr '+' expr            { $$ = $1 + $3; }
-         | expr '-' expr            { $$ = $1 - $3; }
-         | expr '*' expr            { $$ = $1 * $3; }
-         | expr '/' expr            { $$ = floor($1 / $3); }
-         | expr '^' expr            { $$ = pow($1, $3); }
+         NUM                        { $$ = newnum($1); }
+         | VAR                      { $$ = newvar($1); }
+         | expr '+' expr            { $$ = newast('+', $1, $3); }
+         | expr '-' expr            { $$ = newast('-', $1, $3); }
+         | expr '*' expr            { $$ = newast('*', $1, $3); }
+         | expr '/' expr            { $$ = newast('/', $1, $3); }
+         | expr '^' expr            { $$ = newast('^', $1, $3); }
          | '(' expr ')'             { $$ = $2; }
 
 %%
