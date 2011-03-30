@@ -28,7 +28,7 @@ statement:
          statement expr '\n'        {
                                         print_tree($2);
                                         printf("\n");
-                                        numeric_reduce($2);
+                                        reduce($2);
                                         print_tree($2);
                                         printf("\n");
                                         free_tree($2);

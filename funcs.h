@@ -33,5 +33,6 @@ struct ast* newnum(long d);
 struct ast* newvar(char c);
 
 void print_tree(struct ast* t);
+struct ast* reduce(struct ast* t);
 struct ast* numeric_reduce(struct ast* t);
 void free_tree(struct ast* t);

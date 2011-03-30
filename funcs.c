@@ -90,7 +90,7 @@ void print_tree(struct ast* t)
     }
 }
 
-struct ast* numeric_reduce(struct ast* t)
+struct ast* reduce(struct ast* t)
 {
     // Only reduce if this is an AST node.
     switch(t->node_type)
@@ -108,9 +108,17 @@ struct ast* numeric_reduce(struct ast* t)
     }
 
     // Reduce children
-    t->left = numeric_reduce(t->left);
-    t->right = numeric_reduce(t->right);
+    t->left = reduce(t->left);
+    t->right = reduce(t->right);
 
+    t = numeric_reduce(t);
+    return t;
+}
+
+// This function simplifies pure numeric subexpressions.
+// Parameter t must be an AST node.
+struct ast* numeric_reduce(struct ast* t)
+{
     struct num_node *left_node = (struct num_node *) t->left;
     struct num_node *right_node = (struct  num_node *) t->right;
 
