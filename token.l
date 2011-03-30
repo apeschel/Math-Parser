@@ -1,7 +1,7 @@
 %{
     #include <stdlib.h>
-    #include "parse.tab.h"
     #include "funcs.h"
+    #include "parse.tab.h"
 %}
 
 %option noyywrap nodefault yylineno
@@ -14,7 +14,7 @@
                 }
 
 -?[0-9]+        {
-                    yylval.intval = atoi(yytext);
+                    yylval.numval = atoi(yytext);
                     return NUM;
                 }
 

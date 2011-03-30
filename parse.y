@@ -8,12 +8,12 @@
 %union
 {
     struct ast  *t;
-    char        varval;
-    int         intval;
+    t_var       varval;
+    t_num       numval;
 }
 
 %type <varval> VAR;
-%type <intval> NUM;
+%type <numval> NUM;
 %type <t> expr
 
 %token VAR NUM;

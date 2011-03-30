@@ -32,7 +32,7 @@ struct ast* newast(char op, struct ast* l, struct ast* r)
     return result;
 }
 
-struct ast* newnum(long d)
+struct ast* newnum(t_num d)
 {
     struct num_node *result = malloc(sizeof(struct num_node));
 
@@ -48,7 +48,7 @@ struct ast* newnum(long d)
     return (struct ast *)result;
 }
 
-struct ast* newvar(char c)
+struct ast* newvar(t_var c)
 {
     struct var_node *result = malloc(sizeof(struct var_node));
 
@@ -112,6 +112,7 @@ struct ast* reduce(struct ast* t)
     t->right = reduce(t->right);
 
     t = numeric_reduce(t);
+    t = commutative_reduce(t);
     return t;
 }
 
@@ -129,9 +130,9 @@ struct ast* numeric_reduce(struct ast* t)
         return t;
     }
 
-    long left_val = left_node->number;
-    long right_val = right_node->number;
-    long result;
+    t_num left_val = left_node->number;
+    t_num right_val = right_node->number;
+    t_num result;
 
     switch (t->oper)
     {
@@ -162,6 +163,13 @@ struct ast* numeric_reduce(struct ast* t)
 
     free_tree(t);
     return (struct ast *)newnum(result);
+}
+
+// Attempts to simplify AST nodes via the commutative property.
+struct ast* commutative_reduce(struct ast* t)
+{
+    // XXX: Fill this in.
+    return t;
 }
 
 void free_tree(struct ast* t)
