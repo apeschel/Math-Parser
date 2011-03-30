@@ -19,7 +19,7 @@ struct ast
 struct num_node
 {
     enum ast_types  node_type;
-    int             number;
+    long            number;
 };
 
 struct var_node
@@ -33,4 +33,5 @@ struct ast* newnum(long d);
 struct ast* newvar(char c);
 
 void print_tree(struct ast* t);
+struct ast* numeric_reduce(struct ast* t);
 void free_tree(struct ast* t);
