@@ -1,15 +1,16 @@
 %{
     #include <stdio.h>
     #include <math.h>
+    #include <glib.h>
     #include "funcs.h"
     int yylex();
 %}
 
 %union
 {
-    struct ast  *t;
-    t_var       varval;
-    t_num       numval;
+    GNode*   t;
+    t_var    varval;
+    t_num    numval;
 }
 
 %type <varval> VAR;
@@ -28,10 +29,10 @@ statement:
          statement expr '\n'        {
                                         print_tree($2);
                                         printf("\n");
-                                        reduce($2);
-                                        print_tree($2);
-                                        printf("\n");
-                                        free_tree($2);
+                                        // reduce($2);
+                                        // print_tree($2);
+                                        // printf("\n");
+                                        g_node_destroy($2);
                                     }
          |
          ;

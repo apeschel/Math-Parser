@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <math.h>
+#include <glib.h>
+
 #include "funcs.h"
 
 void yyerror(char *s, ...)
@@ -14,82 +16,79 @@ void yyerror(char *s, ...)
     fprintf(stderr, "\n");
 }
 
-struct ast* newast(char op, struct ast* l, struct ast* r)
+GNode* newast(char op, GNode* l, GNode* r)
 {
-    struct ast *result = malloc(sizeof(struct ast));
+    struct Data* d = malloc(sizeof(struct Data));
+    d->type = OPERATOR;
+    d->oper = op;
 
-    if (!result)
-    {
-        yyerror("out of space");
-        exit(0);
-    }
-
-    result->node_type = AST;
-    result->oper = op;
-    result->left = l;
-    result->right = r;
+    GNode* result = g_node_new(d);
+    g_node_prepend(result, l);
+    g_node_append(result, r);
 
     return result;
 }
 
-struct ast* newnum(t_num d)
+GNode* newnum(t_num n)
 {
-    struct num_node *result = malloc(sizeof(struct num_node));
+    struct Data* d = malloc(sizeof(struct Data));
+    d->type = NUMBER;
+    d->number = n;
 
-    if (!result)
-    {
-        yyerror("out of space");
-        exit(0);
-    }
+    GNode* result = g_node_new(d);
 
-    result->node_type = NUM_NODE;
-    result->number = d;
-
-    return (struct ast *)result;
+    return result;
 }
 
-struct ast* newvar(t_var c)
+GNode* newvar(t_var c)
 {
-    struct var_node *result = malloc(sizeof(struct var_node));
+    struct Data* d = malloc(sizeof(struct Data));
+    d->type = VARIABLE;
+    d->variable = c;
 
-    if (!result)
-    {
-        yyerror("out of space");
-        exit(0);
-    }
+    GNode* result = g_node_new(d);
 
-    result->node_type = VAR_NODE;
-    result->variable = c;
-
-    return (struct ast *)result;
+    return result;
 }
 
-void print_tree(struct ast* t)
+static void print_tree_helper(GNode* node, gpointer data)
 {
-    switch (t->node_type)
+    print_tree(node);
+}
+
+void print_tree(GNode* t)
+{
+    struct Data* d = t->data;
+    switch (d->type)
     {
-        case NUM_NODE:
-            printf("%ld", ((struct num_node *)t)->number);
+        case NUMBER:
+            printf(" %ld", d->number);
             break;
 
-        case VAR_NODE:
-            printf("%c", ((struct var_node *)t)->variable);
+        case VARIABLE:
+            printf(" %c", d->variable);
             break;
 
-        case AST:
-            printf("(%c ", t->oper);
-            print_tree(t->left);
-            printf(" ");
-            print_tree(t->right);
+        case OPERATOR:
+            // This is here to prevent a space from appearing at the start
+            // of what is output.
+            if (t->parent != NULL)
+            {
+                printf(" ");
+            }
+
+            printf("(%c", d->oper);
+            g_node_children_foreach(t, G_TRAVERSE_ALL, &print_tree_helper, NULL);
             printf(")");
             break;
 
         default:
-            printf("Internal error: unrecognized bad node %c\n", t->node_type);
+            printf("Internal error: unrecognized bad node %c\n", d->type);
             exit(0);
     }
 }
 
+/*
 struct ast* reduce(struct ast* t)
 {
     // Only reduce if this is an AST node.
@@ -165,25 +164,3 @@ struct ast* numeric_reduce(struct ast* t)
     return (struct ast *)newnum(result);
 }
 
-// Attempts to simplify AST nodes via the commutative property.
-struct ast* commutative_reduce(struct ast* t)
-{
-    // XXX: Fill this in.
-    return t;
-}
-
-void free_tree(struct ast* t)
-{
-    switch(t->node_type)
-    {
-        case AST:
-            free_tree(t->left);
-            free_tree(t->right);
-        case NUM_NODE:
-        case VAR_NODE:
-            free(t);
-            break;
-        default:
-            printf("Internal error: free bad node %c\n", t->node_type);
-    }
-}

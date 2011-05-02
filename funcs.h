@@ -1,43 +1,38 @@
+#ifndef FUNCS_H
+#define FUNCS_H
+#include <glib.h>
+
 extern int yylineno;
 void yyerror(char *s, ...);
 
 typedef long t_num;
 typedef char t_var;
 
-enum ast_types
+enum NodeType
 {
-    AST,
-    NUM_NODE,
-    VAR_NODE
+    OPERATOR,
+    NUMBER,
+    VARIABLE
 };
 
-struct ast
+struct Data
 {
-    enum ast_types  node_type;
-    char            oper;
-    struct ast*     left;
-    struct ast*     right;
+    enum NodeType type;
+    union
+    {
+        char oper;
+        t_num number;
+        t_var variable;
+    };
 };
 
-struct num_node
-{
-    enum ast_types  node_type;
-    t_num           number;
-};
+GNode* newast(char op, GNode* l, GNode* r);
+GNode* newnum(t_num d);
+GNode* newvar(t_var c);
 
-struct var_node
-{
-    enum ast_types  node_type;
-    t_var           variable;
-};
+void print_tree(GNode* t);
 
-struct ast* newast(char op, struct ast* l, struct ast* r);
-struct ast* newnum(t_num d);
-struct ast* newvar(t_var c);
+GNode* reduce(GNode* t);
+GNode* numeric_reduce(GNode* t);
 
-void print_tree(struct ast* t);
-void free_tree(struct ast* t);
-
-struct ast* reduce(struct ast* t);
-struct ast* numeric_reduce(struct ast* t);
-struct ast* commutative_reduce(struct ast* t);
+#endif // FUNCS_H

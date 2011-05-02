@@ -4,7 +4,11 @@
     #include "parse.tab.h"
 %}
 
-%option noyywrap nodefault yylineno
+%option yylineno
+%option noyywrap
+%option nodefault
+%option nounput
+%option noinput
 
 %%
 
