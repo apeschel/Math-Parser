@@ -72,7 +72,7 @@ void print_tree(GNode* t)
         case OPERATOR:
             // This is here to prevent a space from appearing at the start
             // of what is output.
-            if (t->parent != NULL)
+            if (!G_NODE_IS_ROOT(t))
             {
                 printf(" ");
             }
@@ -86,6 +86,53 @@ void print_tree(GNode* t)
             printf("Internal error: unrecognized bad node %c\n", d->type);
             exit(0);
     }
+}
+
+static void combine_trees_helper(GNode* child, gpointer parent)
+{
+    combine_trees(child, (GNode*) parent);
+}
+
+void combine_trees(GNode* child, GNode* parent)
+{
+    struct Data* child_d  = child->data;
+    struct Data* parent_d = parent->data;
+
+    if (G_NODE_IS_LEAF(parent) ||
+        G_NODE_IS_LEAF(child))
+    {
+        return;
+    }
+
+    if (child_d->oper != parent_d->oper)
+    {
+        return;
+    }
+
+    while (g_node_n_children(child) > 0)
+    {
+        GNode* grandchild = g_node_first_child(child);
+        g_node_unlink(grandchild);
+        g_node_insert_before(parent, child, grandchild);
+    }
+
+    g_node_destroy(child);
+}
+
+static void flatten_tree_helper(GNode* node, gpointer data)
+{
+    flatten_tree(node);
+}
+
+void flatten_tree(GNode* t)
+{
+    if (G_NODE_IS_LEAF(t))
+    {
+        return;
+    }
+
+    g_node_children_foreach(t, G_TRAVERSE_NON_LEAVES, &flatten_tree_helper, NULL);
+    g_node_children_foreach(t, G_TRAVERSE_NON_LEAVES, &combine_trees_helper, t);
 }
 
 /*
@@ -163,4 +210,5 @@ struct ast* numeric_reduce(struct ast* t)
     free_tree(t);
     return (struct ast *)newnum(result);
 }
+*/
 

@@ -31,6 +31,8 @@ GNode* newnum(t_num d);
 GNode* newvar(t_var c);
 
 void print_tree(GNode* t);
+void combine_trees(GNode* child, GNode* parent);
+void flatten_tree(GNode* t);
 
 GNode* reduce(GNode* t);
 GNode* numeric_reduce(GNode* t);
