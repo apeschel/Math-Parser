@@ -29,7 +29,9 @@ statement:
          statement expr '\n'        {
                                         print_tree($2);
                                         printf("\n");
+                                        simplify_tree_ops($2);
                                         flatten_tree($2);
+                                        reduce_tree($2);
                                         print_tree($2);
                                         printf("\n");
                                         g_node_destroy($2);

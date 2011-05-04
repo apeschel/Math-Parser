@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 #include <math.h>
 #include <glib.h>
 
@@ -16,58 +17,65 @@ void yyerror(char *s, ...)
     fprintf(stderr, "\n");
 }
 
-GNode* newast(char op, GNode* l, GNode* r)
+GNode* newast(char op, const GNode* l, const GNode* r)
 {
     struct Data* d = malloc(sizeof(struct Data));
     d->type = OPERATOR;
     d->oper = op;
 
     GNode* result = g_node_new(d);
-    g_node_prepend(result, l);
-    g_node_append(result, r);
+    g_node_prepend(result, (GNode*) l);
+    g_node_append(result, (GNode*) r);
 
     return result;
 }
 
-GNode* newnum(t_num n)
+struct Data* new_num_data(t_num n)
 {
     struct Data* d = malloc(sizeof(struct Data));
     d->type = NUMBER;
     d->number = n;
 
+    return d;
+}
+
+GNode* newnum(t_num n)
+{
+    struct Data* d = new_num_data(n);
     GNode* result = g_node_new(d);
 
     return result;
 }
 
-GNode* newvar(t_var c)
+struct Data* new_var_data(t_var c)
 {
     struct Data* d = malloc(sizeof(struct Data));
     d->type = VARIABLE;
     d->var_name = c;
     d->sign = POSITIVE;
 
+    return d;
+}
+
+GNode* newvar(t_var c)
+{
+    struct Data* d = new_var_data(c);
     GNode* result = g_node_new(d);
 
     return result;
 }
 
-static void print_tree_helper(GNode* node, gpointer data)
-{
-    print_tree(node);
-}
-
-void print_tree(GNode* t)
+void print_tree(const GNode* t)
 {
     struct Data* d = t->data;
     switch (d->type)
     {
         case NUMBER:
-            printf(" %ld", d->number);
+            printf(" %f", d->number);
             break;
 
         case VARIABLE:
-            printf(" %c", d->var_name);
+            printf(" %s%c", d->sign == NEGATIVE? "-" : "", d->var_name);
             break;
 
         case OPERATOR:
@@ -79,7 +87,7 @@ void print_tree(GNode* t)
             }
 
             printf("(%c", d->oper);
-            g_node_children_foreach(t, G_TRAVERSE_ALL, &print_tree_helper, NULL);
+            g_node_children_foreach((GNode*) t, G_TRAVERSE_ALL, (GNodeForeachFunc) &print_tree, NULL);
             printf(")");
             break;
 
@@ -87,11 +95,6 @@ void print_tree(GNode* t)
             printf("Internal error: unrecognized bad node %c\n", d->type);
             exit(0);
     }
-}
-
-static void combine_trees_helper(GNode* child, gpointer parent)
-{
-    combine_trees(child, (GNode*) parent);
 }
 
 void combine_trees(GNode* child, GNode* parent)
@@ -120,11 +123,6 @@ void combine_trees(GNode* child, GNode* parent)
     g_node_destroy(child);
 }
 
-static void flatten_tree_helper(GNode* node, gpointer data)
-{
-    flatten_tree(node);
-}
-
 void flatten_tree(GNode* t)
 {
     if (G_NODE_IS_LEAF(t))
@@ -132,32 +130,30 @@ void flatten_tree(GNode* t)
         return;
     }
 
-    g_node_children_foreach(t, G_TRAVERSE_NON_LEAVES, &flatten_tree_helper, NULL);
-    g_node_children_foreach(t, G_TRAVERSE_NON_LEAVES, &combine_trees_helper, t);
+    g_node_children_foreach(t, G_TRAVERSE_NON_LEAVES, (GNodeForeachFunc) &flatten_tree, NULL);
+    g_node_children_foreach(t, G_TRAVERSE_NON_LEAVES, (GNodeForeachFunc) &combine_trees, t);
 }
 
-static void simplify_div_op(GNode* t)
+void simplify_tree_ops(GNode* t)
 {
-    struct Data* d = t->data;
-
-    if (g_node_n_children(t) != 2)
+    if (G_NODE_IS_LEAF(t))
+    {
         return;
+    }
 
-    GNode* right_child = g_node_nth_child(t, RIGHT);
-    invert(right_child);
-    d->oper = '*';
+    g_node_children_foreach(t, G_TRAVERSE_NON_LEAVES, (GNodeForeachFunc) &simplify_tree_ops, NULL);
+    simplify_op(t);
 }
 
-static void simplify_sub_op(GNode* t)
+static void simplify_inv_op(GNode* t, void (*op_func)(GNode* t))
 {
-    struct Data* d = t->data;
-
     if (g_node_n_children(t) != 2)
+    {
         return;
+    }
 
     GNode* right_child = g_node_nth_child(t, RIGHT);
-    negate(right_child);
-    d->oper = '+';
+    op_func(right_child);
 }
 
 void simplify_op(GNode* t)
@@ -172,103 +168,178 @@ void simplify_op(GNode* t)
     switch (d->oper)
     {
         case '-':
-            simplify_sub_op(t);
+            simplify_inv_op(t, negate);
+            d->oper = '+';
             return;
 
         case '/':
-            simplify_div_op(t);
+            simplify_inv_op(t, invert);
+            d->oper = '*';
             return;
 
         default:
             return;
     }
+}
+
+void inversion_func
+    (
+        GNode* t,
+        void (*num_operator)(GNode* t),
+        void (*var_operator)(GNode* t)
+    )
+{
+    struct Data* d = t->data;
+    GNode* left_child = g_node_nth_child(t, LEFT);
+    GNode* right_child = g_node_nth_child(t, RIGHT);
+
+    switch(d->type)
+    {
+        case NUMBER:
+            num_operator(t);
+            return;
+
+        case VARIABLE:
+            var_operator(t);
+            return;
+
+        case OPERATOR:
+            inversion_func(left_child, num_operator, var_operator);
+            inversion_func(right_child, num_operator, var_operator);
+            return;
+    }
+}
+
+static void invert_num(GNode* t)
+{
+    struct Data* d = t->data;
+    d->number = 1 / d->number;
+}
+
+static void invert_var(GNode* t)
+{
+    // struct Data* d = t->data;
+    // TODO: fill this in.
 }
 
 void invert(GNode* t)
 {
-    // XXX: Fill this in
+    inversion_func(t, invert_num, invert_var);
+}
+
+static void negate_num(GNode *t)
+{
+    struct Data* d = t->data;
+    d->number = -(d->number);
+}
+
+static void negate_var(GNode *t)
+{
+    struct Data* d = t->data;
+
+    switch (d->sign)
+    {
+        case POSITIVE:
+            d->sign = NEGATIVE;
+            return;
+
+        case NEGATIVE:
+            d->sign = POSITIVE;
+            return;
+
+        default:
+            return;
+    }
 }
 
 void negate(GNode* t)
 {
-    // XXX: Fill this in
+    inversion_func(t, negate_num, negate_var);
 }
 
-
-/*
-struct ast* reduce(struct ast* t)
+void reduce_tree(GNode* t)
 {
-    // Only reduce if this is an AST node.
-    switch(t->node_type)
+    if (G_NODE_IS_LEAF(t))
     {
-        case NUM_NODE:
-        case VAR_NODE:
-            return t;
-
-        case AST:
-            break;
-
-        default:
-            printf("Internal error: unrecognized bad node %c\n", t->node_type);
-            exit(0);
+        return;
     }
 
-    // Reduce children
-    t->left = reduce(t->left);
-    t->right = reduce(t->right);
-
-    t = numeric_reduce(t);
-    t = commutative_reduce(t);
-    return t;
+    g_node_children_foreach(t, G_TRAVERSE_NON_LEAVES, (GNodeForeachFunc) &reduce_tree, NULL);
+    reduce(t);
 }
 
-// This function simplifies pure numeric subexpressions.
-// Parameter t must be an AST node.
-struct ast* numeric_reduce(struct ast* t)
+static t_num add_op(t_num x, t_num y)
 {
-    struct num_node *left_node = (struct num_node *) t->left;
-    struct num_node *right_node = (struct  num_node *) t->right;
+    return x + y;
+}
 
-    // Only reduce if both children are numeric.
-    if (left_node->node_type  != NUM_NODE ||
-        right_node->node_type != NUM_NODE)
+static t_num mul_op(t_num x, t_num y)
+{
+    return x * y;
+}
+
+static void reduce_func(GNode* t, t_num sum, t_num (*operator)(t_num x, t_num y))
+{
+    GNode* child = t->children;
+    GNode* next_child;
+
+    while (NULL != child)
     {
-        return t;
+        struct Data* d = child->data;
+        switch (d->type)
+        {
+            case NUMBER:
+                sum = operator(sum, d->number);
+                next_child = child->next;
+                g_node_destroy(child);
+                break;
+
+            case VARIABLE:
+                next_child = child->next;
+                break;
+
+            case OPERATOR:
+                next_child = child->next;
+                break;
+        }
+
+        child = next_child;
     }
 
-    t_num left_val = left_node->number;
-    t_num right_val = right_node->number;
-    t_num result;
+    if (g_node_n_children(t) == 0)
+    {
+        free(t->data);
+        t->data = new_num_data(sum);
+    } else
+    {
+        g_node_append(t, newnum(sum));
+    }
+}
 
-    switch (t->oper)
+void reduce(GNode* t)
+{
+    struct Data* d = t->data;
+
+    if (d->type != OPERATOR)
+    {
+        return;
+    }
+
+    switch(d->oper)
     {
         case '+':
-            result = left_val + right_val;
-            break;
-
-        case '-':
-            result = left_val - right_val;
+            reduce_func(t, 0, &add_op);
             break;
 
         case '*':
-            result = left_val * right_val;
-            break;
-
-        case '/':
-            result = floor(left_val / right_val);
-            break;
+            reduce_func(t, 1, &mul_op);
+            return;
 
         case '^':
-            result = floor(pow(left_val, right_val));
-            break;
+            // TODO Fill this in.
+            return;
 
         default:
-            printf("Internal error: unrecognized operator :%c\n", t->oper);
-            exit(0);
+            return;
     }
-
-    free_tree(t);
-    return (struct ast *)newnum(result);
 }
-*/
-
