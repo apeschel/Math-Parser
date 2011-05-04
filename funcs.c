@@ -44,7 +44,8 @@ GNode* newvar(t_var c)
 {
     struct Data* d = malloc(sizeof(struct Data));
     d->type = VARIABLE;
-    d->variable = c;
+    d->var_name = c;
+    d->sign = POSITIVE;
 
     GNode* result = g_node_new(d);
 
@@ -66,7 +67,7 @@ void print_tree(GNode* t)
             break;
 
         case VARIABLE:
-            printf(" %c", d->variable);
+            printf(" %c", d->var_name);
             break;
 
         case OPERATOR:
@@ -134,6 +135,65 @@ void flatten_tree(GNode* t)
     g_node_children_foreach(t, G_TRAVERSE_NON_LEAVES, &flatten_tree_helper, NULL);
     g_node_children_foreach(t, G_TRAVERSE_NON_LEAVES, &combine_trees_helper, t);
 }
+
+static void simplify_div_op(GNode* t)
+{
+    struct Data* d = t->data;
+
+    if (g_node_n_children(t) != 2)
+        return;
+
+    GNode* right_child = g_node_nth_child(t, RIGHT);
+    invert(right_child);
+    d->oper = '*';
+}
+
+static void simplify_sub_op(GNode* t)
+{
+    struct Data* d = t->data;
+
+    if (g_node_n_children(t) != 2)
+        return;
+
+    GNode* right_child = g_node_nth_child(t, RIGHT);
+    negate(right_child);
+    d->oper = '+';
+}
+
+void simplify_op(GNode* t)
+{
+    struct Data* d = t->data;
+
+    if (d->type != OPERATOR)
+    {
+        return;
+    }
+
+    switch (d->oper)
+    {
+        case '-':
+            simplify_sub_op(t);
+            return;
+
+        case '/':
+            simplify_div_op(t);
+            return;
+
+        default:
+            return;
+    }
+}
+
+void invert(GNode* t)
+{
+    // XXX: Fill this in
+}
+
+void negate(GNode* t)
+{
+    // XXX: Fill this in
+}
+
 
 /*
 struct ast* reduce(struct ast* t)

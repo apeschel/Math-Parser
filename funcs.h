@@ -8,21 +8,34 @@ void yyerror(char *s, ...);
 typedef long t_num;
 typedef char t_var;
 
-enum NodeType
+enum Position
 {
-    OPERATOR,
-    NUMBER,
-    VARIABLE
+    LEFT,
+    RIGHT
 };
 
 struct Data
 {
-    enum NodeType type;
+    enum NodeType
+    {
+        OPERATOR,
+        NUMBER,
+        VARIABLE
+    } type;
+
     union
     {
         char oper;
         t_num number;
-        t_var variable;
+        struct
+        {
+            t_var var_name;
+            enum
+            {
+                POSITIVE,
+                NEGATIVE
+            } sign;
+        };
     };
 };
 
@@ -33,6 +46,10 @@ GNode* newvar(t_var c);
 void print_tree(GNode* t);
 void combine_trees(GNode* child, GNode* parent);
 void flatten_tree(GNode* t);
+
+void simplify_op(GNode* t);
+void invert(GNode* t);
+void negate(GNode* t);
 
 GNode* reduce(GNode* t);
 GNode* numeric_reduce(GNode* t);
