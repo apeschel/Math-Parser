@@ -1,0 +1,12 @@
+HOW TO BUILD:
+
+Required tools:
+    * flex  (http://flex.sourceforge.net/)
+    * bison (http://www.gnu.org/software/bison/)
+    * gcc   (http://gcc.gnu.org/)
+    * make  (http://www.gnu.org/software/make/)
+
+Required libraries:
+    * glib  (http://developer.gnome.org/glib/)
+
+With these tools and libraries installed, use make to build the program.
