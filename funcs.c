@@ -68,24 +68,23 @@ GNode* newvar(t_var c)
 void print_tree(const GNode* t)
 {
     struct Data* d = t->data;
+    // This check is here to prevent a space from appearing at the start of the line.
+    if (!G_NODE_IS_ROOT(t))
+    {
+        printf(" ");
+    }
+
     switch (d->type)
     {
         case NUMBER:
-            printf(" %f", d->number);
+            printf("%f", d->number);
             break;
 
         case VARIABLE:
-            printf(" %s%c", d->sign == NEGATIVE? "-" : "", d->var_name);
+            printf("%s%c", d->sign == NEGATIVE? "-" : "", d->var_name);
             break;
 
         case OPERATOR:
-            // This is here to prevent a space from appearing at the start
-            // of what is output.
-            if (!G_NODE_IS_ROOT(t))
-            {
-                printf(" ");
-            }
-
             printf("(%c", d->oper);
             g_node_children_foreach((GNode*) t, G_TRAVERSE_ALL, (GNodeForeachFunc) &print_tree, NULL);
             printf(")");
