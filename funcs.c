@@ -359,11 +359,18 @@ static void foldr_reduce(GNode* t, t_num sum, t_num (*num_op)(t_num x, t_num y))
 
     // TODO: Add logic for simplifying variables.
 
+    int i;
+    for (i = 0; i < sizeof(char); i++)
+    {
+        g_slist_free(vars[i]);
+    }
+
     if (g_node_n_children(t) == 0)
     {
         free(t->data);
         t->data = new_num_data(sum);
-    } else
+    }
+    else
     {
         g_node_append(t, newnum(sum));
     }
