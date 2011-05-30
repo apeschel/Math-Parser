@@ -76,4 +76,7 @@ void negate(GNode* t);
 void reduce_tree(GNode* t);
 void reduce(GNode* t);
 
+int main(int argc, char *argv[ ]);
+void process_tree(GNode* t);
+
 #endif // FUNCS_H

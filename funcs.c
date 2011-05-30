@@ -17,6 +17,7 @@
  * along with Parser.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -130,7 +131,7 @@ void print_tree(const GNode* t)
             break;
 
         default:
-            printf("Internal error: unrecognized bad node %c\n", d->type);
+            fprintf(stderr, "\nInternal error: unrecognized bad node %c\n", d->type);
             exit(0);
     }
 }
@@ -447,3 +448,72 @@ void reduce(GNode* t)
             return;
     }
 }
+
+static int REDUCE_FLAG = FALSE;
+
+void process_tree(GNode* t)
+{
+    if (REDUCE_FLAG)
+    {
+        flatten_tree(t);
+        reduce_tree(t);
+        print_tree(t);
+        printf("\n");
+    }
+    else
+    {
+        print_tree(t);
+        simplify_tree_ops(t);
+        printf("\n");
+    }
+
+    g_node_destroy(t);
+}
+
+int main(int argc, char *argv[ ])
+{
+    int c;
+    while ((c = getopt(argc, argv, "r")) != -1)
+    {
+        switch (c)
+        {
+            case 'r':
+                REDUCE_FLAG = TRUE;
+                break;
+
+            default:
+                fprintf(stderr, "Unrecognized flag: %c", c);
+                exit(0);
+                break;
+        }
+    }
+
+    extern void yyrestart(FILE *f);
+    extern int yyparse();
+
+    // If no files passed as arguments, read from stdin.
+    if (optind >= argc)
+    {
+        yyparse();
+    }
+    else
+    {
+        for (; optind < argc; optind++)
+        {
+            FILE * f = fopen(argv[optind], "r");
+
+            if (!f)
+            {
+                perror(argv[optind]);
+                return 1;
+            }
+
+            yyrestart(f);
+            yyparse();
+            fclose(f);
+        }
+    }
+
+    return 0;
+}
+
