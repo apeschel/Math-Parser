@@ -380,7 +380,7 @@ static void foldr_reduce(GNode* t, t_num sum, t_num (*num_op)(t_num x, t_num y))
     // TODO: Add logic for simplifying variables.
 
     int i;
-    for (i = 0; i < sizeof(char); i++)
+    for (i = 0; i < 256; i++)
     {
         g_slist_free(vars[i]);
     }
