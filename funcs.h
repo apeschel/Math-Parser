@@ -29,12 +29,14 @@ struct Data
         t_num number;
         struct
         {
-            t_var var_name;
             enum
             {
                 POSITIVE,
                 NEGATIVE
             } sign;
+            t_num count;
+            t_var var_name;
+            t_num exponent;
         };
     };
 };

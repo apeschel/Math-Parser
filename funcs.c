@@ -51,8 +51,9 @@ struct Data* new_var_data(t_var c)
 {
     struct Data* d = malloc(sizeof(struct Data));
     d->type = VARIABLE;
+    d->count = 1;
     d->var_name = c;
-    d->sign = POSITIVE;
+    d->exponent = 1;
 
     return d;
 }
@@ -63,6 +64,27 @@ GNode* newvar(t_var c)
     GNode* result = g_node_new(d);
 
     return result;
+}
+
+void print_var(const struct Data* d)
+{
+    if (d->count == -1)
+    {
+        printf("-");
+    }
+    else if (d->count != 1)
+    {
+        printf("%f", d->count);
+    }
+
+    printf("%c", d->var_name);
+
+    if (d->exponent != 1)
+    {
+        printf("^%f", d->exponent);
+    }
+
+    printf(" ");
 }
 
 void print_tree(const GNode* t)
@@ -81,7 +103,7 @@ void print_tree(const GNode* t)
             break;
 
         case VARIABLE:
-            printf("%s%c", d->sign == NEGATIVE? "-" : "", d->var_name);
+            print_var(d);
             break;
 
         case OPERATOR:
@@ -112,14 +134,27 @@ void combine_trees(GNode* child, GNode* parent)
         return;
     }
 
-    while (g_node_n_children(child) > 0)
+    // Only flatten operators with the communative property.
+    switch (child_d->oper)
     {
-        GNode* grandchild = g_node_first_child(child);
-        g_node_unlink(grandchild);
-        g_node_insert_before(parent, child, grandchild);
-    }
 
-    g_node_destroy(child);
+        case '+':
+        case '-':
+        case '/':
+        case '*':
+            while (g_node_n_children(child) > 0)
+            {
+                GNode* grandchild = g_node_first_child(child);
+                g_node_unlink(grandchild);
+                g_node_insert_before(parent, child, grandchild);
+            }
+
+            g_node_destroy(child);
+            return;
+
+        default:
+            return;
+    }
 }
 
 void flatten_tree(GNode* t)
@@ -184,8 +219,8 @@ void simplify_op(GNode* t)
 void inversion_func
     (
         GNode* t,
-        void (*num_operator)(GNode* t),
-        void (*var_operator)(GNode* t)
+        void (*num_operator)(struct Data* d),
+        void (*var_operator)(struct Data* d)
     )
 {
     struct Data* d = t->data;
@@ -195,11 +230,11 @@ void inversion_func
     switch(d->type)
     {
         case NUMBER:
-            num_operator(t);
+            num_operator(d);
             return;
 
         case VARIABLE:
-            var_operator(t);
+            var_operator(d);
             return;
 
         case OPERATOR:
@@ -209,16 +244,14 @@ void inversion_func
     }
 }
 
-static void invert_num(GNode* t)
+static void invert_num(struct Data* d)
 {
-    struct Data* d = t->data;
     d->number = 1 / d->number;
 }
 
-static void invert_var(GNode* t)
+static void invert_var(struct Data* d)
 {
-    // struct Data* d = t->data;
-    // TODO: fill this in.
+    d->exponent *= -1;
 }
 
 void invert(GNode* t)
@@ -226,29 +259,14 @@ void invert(GNode* t)
     inversion_func(t, invert_num, invert_var);
 }
 
-static void negate_num(GNode *t)
+static void negate_num(struct Data* d)
 {
-    struct Data* d = t->data;
     d->number = -(d->number);
 }
 
-static void negate_var(GNode *t)
+static void negate_var(struct Data* d)
 {
-    struct Data* d = t->data;
-
-    switch (d->sign)
-    {
-        case POSITIVE:
-            d->sign = NEGATIVE;
-            return;
-
-        case NEGATIVE:
-            d->sign = POSITIVE;
-            return;
-
-        default:
-            return;
-    }
+    d->count *= -1;
 }
 
 void negate(GNode* t)
@@ -277,33 +295,69 @@ static t_num mul_op(t_num x, t_num y)
     return x * y;
 }
 
-static void reduce_func(GNode* t, t_num sum, t_num (*operator)(t_num x, t_num y))
+static void var_op(GNode* left, GNode* right, t_num (*num_op)(t_num x, t_num y))
+{
+    struct Data*  left_d = left->data;
+    struct Data* right_d = right->data;
+
+    if (left_d->var_name != right_d->var_name)
+    {
+        return;
+    }
+    else if (left_d->exponent != right_d->exponent)
+    {
+        return;
+    }
+
+    left_d->count = num_op(left_d->count, right_d->count);
+    g_node_destroy(right);
+}
+
+static void mul_vars(GNode* left, GNode* right)
+{
+    var_op(left, right, mul_op);
+}
+
+static void add_vars(GNode* left, GNode* right)
+{
+    var_op(left, right, add_op);
+}
+
+static void foldr_reduce(GNode* t, t_num sum, t_num (*num_op)(t_num x, t_num y))
 {
     GNode* child = t->children;
     GNode* next_child;
 
+    GSList* vars[sizeof(char)] = { 0 };
+
     while (NULL != child)
     {
         struct Data* d = child->data;
+        int index;
         switch (d->type)
         {
             case NUMBER:
-                sum = operator(sum, d->number);
+                sum = num_op(sum, d->number);
                 next_child = child->next;
                 g_node_destroy(child);
                 break;
 
             case VARIABLE:
+                index = (int) d->var_name;
+                vars[index] = g_slist_append(vars[index], child);
                 next_child = child->next;
                 break;
 
             case OPERATOR:
+                // No further simplications can be made.
                 next_child = child->next;
                 break;
         }
 
         child = next_child;
     }
+
+    // TODO: Add logic for simplifying variables.
 
     if (g_node_n_children(t) == 0)
     {
@@ -312,6 +366,31 @@ static void reduce_func(GNode* t, t_num sum, t_num (*operator)(t_num x, t_num y)
     } else
     {
         g_node_append(t, newnum(sum));
+    }
+}
+
+void reduce_exp(GNode *t)
+{
+    GNode*  left_child = g_node_nth_child(t, LEFT);
+    GNode* right_child = g_node_nth_child(t, RIGHT);
+
+    struct Data* base_d = left_child->data;
+    struct Data*  exp_d = right_child->data;
+
+    if (base_d->type == NUMBER &&
+         exp_d->type == NUMBER)
+    {
+        t_num val = pow(base_d->number, exp_d->number);
+
+        free(t->data);
+        t->data = new_num_data(val);
+    }
+
+    if (base_d->type == VARIABLE &&
+         exp_d->type == NUMBER)
+    {
+        base_d->exponent *= exp_d->number;
+        g_node_destroy(right_child);
     }
 }
 
@@ -327,15 +406,15 @@ void reduce(GNode* t)
     switch(d->oper)
     {
         case '+':
-            reduce_func(t, 0, &add_op);
+            foldr_reduce(t, 0, &add_op);
             break;
 
         case '*':
-            reduce_func(t, 1, &mul_op);
+            foldr_reduce(t, 1, &mul_op);
             return;
 
         case '^':
-            // TODO Fill this in.
+            reduce_exp(t);
             return;
 
         default:
