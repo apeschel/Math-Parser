@@ -83,8 +83,6 @@ void print_var(const struct Data* d)
     {
         printf("^%f", d->exponent);
     }
-
-    printf(" ");
 }
 
 void print_tree(const GNode* t)
@@ -328,7 +326,9 @@ static void foldr_reduce(GNode* t, t_num sum, t_num (*num_op)(t_num x, t_num y))
     GNode* child = t->children;
     GNode* next_child;
 
-    GSList* vars[sizeof(char)] = { 0 };
+    // vars has a spot for every possible char value.
+    // this is a kludge to use in place of a proper hash.
+    GSList* vars[256] = { 0 };
 
     while (NULL != child)
     {
@@ -414,7 +414,7 @@ void reduce(GNode* t)
     {
         case '+':
             foldr_reduce(t, 0, &add_op);
-            break;
+            return;
 
         case '*':
             foldr_reduce(t, 1, &mul_op);
