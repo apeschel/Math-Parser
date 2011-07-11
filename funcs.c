@@ -341,6 +341,25 @@ static void add_vars(GNode* left, GNode* right)
     var_op(left, right, add_op);
 }
 
+static void simplify_variables(GSList* vars[], int len)
+{
+    int i;
+
+    // TODO: Add logic for simplifying variables.
+    // Variables are currently broken up into lists.
+    // Will need to go through these lists and combine
+    // those which are able to be combined.
+    for (i = 0; i < len; i++)
+    {
+        while (g_slist_length() > 0)
+        {
+            ;
+        }
+
+        g_slist_free(vars[i]);
+    }
+}
+
 static void foldr_reduce(GNode* t, t_num sum, t_num (*num_op)(t_num x, t_num y))
 {
     GNode* child = t->children;
@@ -377,13 +396,7 @@ static void foldr_reduce(GNode* t, t_num sum, t_num (*num_op)(t_num x, t_num y))
         child = next_child;
     }
 
-    // TODO: Add logic for simplifying variables.
-
-    int i;
-    for (i = 0; i < 256; i++)
-    {
-        g_slist_free(vars[i]);
-    }
+    simplify_variables(vars, 256);
 
     if (g_node_n_children(t) == 0)
     {
