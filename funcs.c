@@ -37,6 +37,23 @@ void yyerror(char *s, ...)
     fprintf(stderr, "\n");
 }
 
+int free_ast(GNode* node)
+{
+    free(node->data);
+    return 0;
+}
+
+void free_tree(GNode* node)
+{
+    g_node_traverse(node,
+                    G_IN_ORDER,
+                    G_TRAVERSE_ALL,
+                    -1,
+                    (GNodeTraverseFunc) &free_ast,
+                    NULL);
+    g_node_destroy(node);
+}
+
 GNode* newast(char op, const GNode* l, const GNode* r)
 {
     struct Data* d = malloc(sizeof(struct Data));
@@ -167,7 +184,7 @@ void combine_trees(GNode* child, GNode* parent)
                 g_node_insert_before(parent, child, grandchild);
             }
 
-            g_node_destroy(child);
+            free_tree(child);
             return;
 
         default:
@@ -313,6 +330,7 @@ static t_num mul_op(t_num x, t_num y)
     return x * y;
 }
 
+/*
 static void var_op(GNode* left, GNode* right, t_num (*num_op)(t_num x, t_num y))
 {
     struct Data*  left_d = left->data;
@@ -340,8 +358,9 @@ static void add_vars(GNode* left, GNode* right)
 {
     var_op(left, right, add_op);
 }
+*/
 
-static void simplify_variables(GSList* vars[], int len)
+static void simplify_variables(GNode* t, GSList* vars[], int len)
 {
     int i;
 
@@ -351,19 +370,18 @@ static void simplify_variables(GSList* vars[], int len)
     // those which are able to be combined.
     for (i = 0; i < len; i++)
     {
-        while (g_slist_length() > 0)
+        GSList* cur_node = vars[i];
+        while (NULL != cur_node)
         {
-            ;
+            cur_node = g_slist_next(cur_node);
         }
-
-        g_slist_free(vars[i]);
     }
 }
 
 static void foldr_reduce(GNode* t, t_num sum, t_num (*num_op)(t_num x, t_num y))
 {
     GNode* child = t->children;
-    GNode* next_child;
+    GNode* next_child = NULL;
 
     // vars has a spot for every possible char value.
     // this is a kludge to use in place of a proper hash.
@@ -378,7 +396,7 @@ static void foldr_reduce(GNode* t, t_num sum, t_num (*num_op)(t_num x, t_num y))
             case NUMBER:
                 sum = num_op(sum, d->number);
                 next_child = child->next;
-                g_node_destroy(child);
+                free_tree(child);
                 break;
 
             case VARIABLE:
@@ -396,7 +414,7 @@ static void foldr_reduce(GNode* t, t_num sum, t_num (*num_op)(t_num x, t_num y))
         child = next_child;
     }
 
-    simplify_variables(vars, 256);
+    simplify_variables(t, vars, 256);
 
     if (g_node_n_children(t) == 0)
     {
@@ -430,7 +448,7 @@ void reduce_exp(GNode *t)
          exp_d->type == NUMBER)
     {
         base_d->exponent *= exp_d->number;
-        g_node_destroy(right_child);
+        free_tree(right_child);
     }
 }
 
@@ -480,7 +498,7 @@ void process_tree(GNode* t)
         printf("\n");
     }
 
-    g_node_destroy(t);
+    free_tree(t);
 }
 
 int main(int argc, char *argv[ ])
