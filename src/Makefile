@@ -23,4 +23,8 @@ parse.tab.o: parse.tab.h parse.tab.c funcs.h
 clean:
 	-rm $(OBJECTS) parser parse.tab.c lex.yy.c parse.tab.h
 
-.PHONY: all clean
+check: all
+	# Unit tests go here. None currently.
+	@echo "*** ALL TESTS PASSED ***"
+
+.PHONY: all clean check
