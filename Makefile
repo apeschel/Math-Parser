@@ -14,7 +14,7 @@ $(distdir).tar.gz: $(distdir)
 
 $(distdir): FORCE
 	mkdir -p $(distdir)/src
-	cp Makefile $(distdir)/src
+	cp Makefile $(distdir)
 	cp src/Makefile $(distdir)/src
 	cp src/funcs.c src/funcs.h $(distdir)/src
 	cp src/token.l $(distdir)/src
@@ -24,4 +24,11 @@ FORCE:
 	-rm $(distdir).tar.gz >/dev/null 2>&1
 	-rm -rf $(distdir) >/dev/null 2>&1
 
-.PHONY: FORCE all clean dist
+distcheck: $(distdir).tar.gz
+	gzip -cd $(distdir).tar.gz | tar xvf -
+	cd $(distdir) && $(MAKE) all
+	cd $(distdir) && $(MAKE) clean
+	rm -rf $(distdir)
+	@echo "*** Package $(distdir).tar.gz is ready for distribution."
+
+.PHONY: FORCE all clean dist distcheck
